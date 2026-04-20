@@ -1,0 +1,101 @@
+{
+  "theme": "LIGHT",
+  "archetype": "3 (Pastel & Soft) with Neo-Brutalist Twist",
+  "design_philosophy": "A modern, Gen Z-focused gamified learning experience for Indian students preparing for O Level exams. It blends friendly, optimistic pastel colors with sharp, confident neo-brutalist borders (2px solid black) and hard drop shadows. The UI is energetic, highly legible, and uses natural Hinglish copy ('Badhiya!', 'Start Mock Test') to motivate students. The layout uses generous bento-grids and chunky interactive elements perfect for mobile-first usage.",
+  "colors": {
+    "background": {
+      "primary": "#FDFBF7",
+      "secondary": "#FFFFFF"
+    },
+    "text": {
+      "primary": "#0A0A0A",
+      "secondary": "#52525B",
+      "accent_on_dark": "#FFFFFF"
+    },
+    "brand_accents": {
+      "m1_it_tools": "#A7F3D0",
+      "m2_web_design": "#FDE047",
+      "m3_python": "#C4B5FD",
+      "m4_iot": "#FDA4AF",
+      "mock_test": "#0A0A0A"
+    },
+    "ui_elements": {
+      "primary_button": "#3B82F6",
+      "success_green": "#22C55E",
+      "error_red": "#EF4444",
+      "warning_yellow": "#F59E0B"
+    },
+    "borders": {
+      "default": "#0A0A0A"
+    }
+  },
+  "typography": {
+    "font_families": {
+      "headings": "Outfit",
+      "body": "DM Sans"
+    },
+    "scales": {
+      "h1": "text-4xl sm:text-5xl lg:text-6xl font-black tracking-tight",
+      "h2": "text-2xl sm:text-3xl lg:text-4xl font-bold tracking-tight",
+      "h3": "text-xl sm:text-2xl font-bold",
+      "h4": "text-lg sm:text-xl font-semibold",
+      "body": "text-base font-medium leading-relaxed",
+      "small": "text-sm font-medium",
+      "timer_score": "text-4xl sm:text-5xl font-mono font-bold tracking-tighter"
+    }
+  },
+  "spacing_and_layout": {
+    "general": "Use Tailwind generic padding like p-6, p-8 for containers. Generous spacing for touch targets (min h-12).",
+    "bento_grid": "For the subject cards on the Home page, use a responsive grid: grid-cols-1 md:grid-cols-2 gap-6.",
+    "borders_and_shadows": {
+      "default_border": "border-2 border-black rounded-xl",
+      "default_shadow": "shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]",
+      "hover_state": "hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-none transition-all duration-150"
+    }
+  },
+  "components": {
+    "buttons": "Must have border-2 border-black, rounded-xl, and the hard drop shadow. Text must be bold. Primary CTA gets bright colors (e.g., bg-blue-500 text-white), secondary gets bg-white text-black.",
+    "subject_cards": "Each subject gets a distinct pastel background (m1_it_tools, m2_web_design, etc.). Includes the subject title, number of questions/time, and an image/icon.",
+    "quiz_options": "Blocky, full-width buttons. When selected: border-4 border-blue-600 bg-blue-50. When correct (review mode): bg-green-200 border-green-600. When incorrect: bg-red-200 border-red-600.",
+    "navigation": "Sticky top bar, solid background bg-[#FDFBF7] with border-b-2 border-black. Must contain Logo and 'Take Mock Test' CTA.",
+    "shadcn_overrides": "Override Shadcn Dialog, Card, and Progress components to include border-2 border-black and shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] and rounded-xl."
+  },
+  "icons": {
+    "library": "@phosphor-icons/react",
+    "style": "Duotone or Bold weight to match the chunky neo-brutalist UI."
+  },
+  "media": {
+    "hero_image": {
+      "url": "https://images.unsplash.com/photo-1637589308599-3478cc55510d?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA2ODl8MHwxfHNlYXJjaHwyfHxpbmRpYW4lMjBzdHVkZW50JTIwc3R1ZHlpbmclMjB3aXRoJTIwbGFwdG9wJTIwYW5kJTIwc21pbGluZ3xlbnwwfHx8fDE3NzY3MTA0ODB8MA&ixlib=rb-4.1.0&q=85",
+      "description": "Indian student studying with a laptop. Use in the home page hero section to build connection.",
+      "category": "hero"
+    },
+    "python_icon": {
+      "url": "https://static.prod-images.emergentagent.com/jobs/0b61eab5-e089-419c-9944-816664ebd6a4/images/e40657a3856acfa14aab1fc5b4e00ea0aeb2e9c7e2c1570eed7fcd13fe79de9c.png",
+      "description": "3D cute Python snake icon on pastel background. Use in the M3 Python subject card.",
+      "category": "icon"
+    },
+    "iot_icon": {
+      "url": "https://static.prod-images.emergentagent.com/jobs/0b61eab5-e089-419c-9944-816664ebd6a4/images/6fe6be4a1875436ae1ae9010223ab78114a9c28d087f4f8f5aab4bb0a959fc1b.png",
+      "description": "3D IoT glowing microchip icon. Use in the M4 IoT subject card.",
+      "category": "icon"
+    },
+    "web_design_image": {
+      "url": "https://images.pexels.com/photos/196646/pexels-photo-196646.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940",
+      "description": "Workspace with sketchpad and wireframes. Use in the M2 Web Design subject card.",
+      "category": "icon"
+    },
+    "abstract_pattern": {
+      "url": "https://images.pexels.com/photos/12732218/pexels-photo-12732218.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940",
+      "description": "Seamless abstract pattern with white geometric shapes. Use as a subtle blended background overlay (opacity-10) in the hero section or mock test banner to add texture.",
+      "category": "background"
+    }
+  },
+  "key_pages_strategy": {
+    "home_page": "Hero section with large motivating Hinglish typography ('Crack O Level Exams like a Pro!'). Bento grid below for the 4 subjects. A massive, high-contrast dark card spanning full width for the 'Mock Test (50 Qs / 60 Min)'.",
+    "quiz_interface": "Distraction-free. Sticky header with a large, monospace countdown timer. Progress bar (neo-brutalist style) below header. One question per screen. Options are large blocks. 'Next' button floating at bottom right.",
+    "results_page": "Celebratory. Show a massive score (e.g., 18/20). Gamified text ('Ek number!', 'Well done!'). Below, an accordion or list of all questions showing correct/incorrect with explanations."
+  },
+  "testing_attributes": "All interactive buttons (Start Quiz, Next Question, Quiz Option, Submit) MUST include descriptive data-testid attributes (e.g., data-testid='start-mock-test-button').",
+  "instructions_to_main_agent": "Implement a pure Neo-Brutalist UI. Strip all soft shadows from Shadcn components and replace them with solid black borders and solid hard drop shadows. Ensure buttons move on hover (translate). Integrate the provided media URLs directly into their respective cards without placeholder fallbacks. Keep the UI mobile-first, ensuring all touch targets and text sizes are easily readable on smaller screens. Ensure timer functions properly without layout shift."
+}
