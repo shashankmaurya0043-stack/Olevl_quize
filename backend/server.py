@@ -7,6 +7,7 @@ import logging
 import random
 import uuid
 import re
+import hashlib
 import json as _json
 from pathlib import Path
 from pydantic import BaseModel
@@ -298,6 +299,49 @@ async def list_subjects():
 @api_router.get("/mock-test-info")
 async def mock_info():
     return MOCK_TEST
+
+
+@api_router.get("/qotd")
+async def question_of_the_day():
+    """Deterministic Question of the Day, picked by today's UTC date from the
+    merged static + admin pool. Same for all users on the same UTC day.
+    """
+    today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    pool: List[dict] = []
+    for subj_code, qs in QUESTIONS.items():
+        for idx, q in enumerate(qs):
+            pool.append({"id": f"{subj_code}-{idx}", "subject_code": subj_code, **q})
+    admin_docs = await db.admin_questions.find({}, {"_id": 0}).to_list(5000)
+    for doc in admin_docs:
+        pool.append({
+            "id": doc["id"],
+            "subject_code": doc.get("subject_code", ""),
+            "q_en": doc["q_en"],
+            "q_hi": doc["q_hi"],
+            "options_en": doc["options_en"],
+            "options_hi": doc["options_hi"],
+            "a": doc["a"],
+            "exp_en": doc.get("exp_en", ""),
+            "exp_hi": doc.get("exp_hi", ""),
+        })
+
+    if not pool:
+        raise HTTPException(404, "No questions available")
+
+    seed = int(hashlib.md5(today.encode()).hexdigest(), 16)
+    chosen = pool[seed % len(pool)]
+    return {
+        "date": today,
+        "id": chosen["id"],
+        "subject_code": chosen.get("subject_code", ""),
+        "q_en": chosen["q_en"],
+        "q_hi": chosen["q_hi"],
+        "options_en": chosen["options_en"],
+        "options_hi": chosen["options_hi"],
+        "a": chosen["a"],
+        "exp_en": chosen.get("exp_en", ""),
+        "exp_hi": chosen.get("exp_hi", ""),
+    }
 
 
 @api_router.get("/quiz/start/{code}", response_model=StartQuizResponse)

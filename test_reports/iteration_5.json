@@ -1,0 +1,36 @@
+{
+  "summary": "Tested QotD (Question of the Day) end-to-end: backend /api/qotd shape/determinism/Devanagari checks + regression on /quiz/start/M1 and /quiz/start/MOCK. Frontend E2E via Playwright: card renders above subjects, language toggle works, wrong-answer flow shows feedback + explanation + red/green styling, options lock, localStorage state persists after reload, and subject nav still works. 5/5 backend tests pass. 14/15 frontend assertions pass (1 is expected WhatsApp server-side redirect, not a bug).",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "QotD share message", "issues": ["The '📅' calendar emoji in the shared WhatsApp text encodes as %EF%BF%BD (U+FFFD replacement char), suggesting the source literal got corrupted during transpilation/serving. Cosmetic only — message body and link still work. Suggest replacing 📅 with \\uD83D\\uDCC5 escape or verifying /app/frontend/src/components/QuestionOfTheDay.jsx is saved as UTF-8."]}
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_qotd_api.py",
+    "/app/test_reports/pytest/qotd_results.xml"
+  ],
+  "action_items": [
+    "(Optional cosmetic) Fix the corrupted '📅' emoji in the WhatsApp share text in QuestionOfTheDay.jsx (handleShare) so it renders as a calendar emoji instead of a replacement char."
+  ],
+  "critical_code_review_comments": [
+    "Backend /api/qotd leaks the correct answer index 'a' to the client. Acceptable for a casual daily card per main-agent note, but any motivated user can inspect network and pre-know the answer. If tamper resistance is later needed, move scoring server-side (POST /api/qotd/submit) and only return 'a' after submission.",
+    "QotD determinism relies solely on UTC date + pool order. If admin adds/deletes a question mid-day, pool length changes → the seed%len(pool) mapping can shift the chosen question for the remainder of the day. Consider caching today's pick (e.g., store in a daily collection) on first fetch to guarantee stability even when admin content churns.",
+    "server.py is 585 lines and growing; consider splitting into routers (quiz, admin, qotd) as lines approach 700.",
+    "Frontend QuestionOfTheDay.jsx swallows errors silently (returns null on error) which hides API/network issues from users; a small 'try again' UI would help."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_qotd_api.py (new)"
+  ],
+  "success_rate": {"backend": "100%", "frontend": "100% (spec-wise; 14/14 spec checks passed)"},
+  "test_credentials": "n/a (no auth on QotD)",
+  "seed_data_creation": "none",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "QotD for today (UTC 2026-04-21) resolves to id=M4-0 'What is the full form of IoT?' with a=0. Backend tests in /app/backend/tests/test_qotd_api.py cover shape/determinism/Devanagari + quiz start regression. Before Playwright frontend tests, always run: await page.evaluate(\"() => localStorage.removeItem('olevel_qotd_v1')\") then page.reload(). Share button opens wa.me/?text=... which WhatsApp server-side-redirects to api.whatsapp.com/send/?text=... — that is not a bug; assert on window.open call (or document.body attribute) instead of final popup URL if needed. Existing flows (subjects, MOCK, admin) remain green."
+}

@@ -16,6 +16,7 @@ import {
 import Navbar from "../components/Navbar";
 import { getSubjects, getMockInfo } from "../lib/api";
 import { useLang } from "../lib/lang";
+import QuestionOfTheDay from "../components/QuestionOfTheDay";
 
 const SUBJECT_VISUALS = {
   M1: { bg: "bg-m1", Icon: Wrench, emoji: "IT" },
@@ -137,6 +138,11 @@ const Home = () => {
             </div>
           </div>
         </div>
+      </section>
+
+      {/* QUESTION OF THE DAY */}
+      <section className="max-w-7xl mx-auto px-4 sm:px-6 -mt-2 mb-2">
+        <QuestionOfTheDay />
       </section>
 
       {/* SUBJECTS */}
