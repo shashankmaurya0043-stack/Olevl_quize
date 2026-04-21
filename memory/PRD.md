@@ -35,11 +35,12 @@ Create a quiz website for O Level exam preparation. Subjects: M1, M2, M3 (Python
 - All data-testid attributes applied; backend + frontend tests pass 100%
 
 ## Implemented (Feature wave 2)
-- **Bilingual question bank**: 50 Qs × 4 subjects = 200 total, full English + proper Hindi (Devanagari) for question, all 4 options, and explanation
+- **Bilingual question bank**: 100+ Qs × 4 subjects (405 total) — full English + proper Hindi (Devanagari) for every question, option, and explanation
 - **Live language toggle** (EN / हिं) in navbar + quiz header — switches any time, even mid-quiz
 - **Dark mode** with inverted neo-brutalist shadows, persisted in localStorage
 - **Local score history** via localStorage (up to last 50 attempts); /history page with stats (attempts, average, best)
 - **WhatsApp share** on results page — one-tap share card with score and tier in current language
+- **Navbar on Results page** — lang/theme/history/mock-test accessible directly from results
 
 ## Backlog (P1 / P2)
 - P1: Admin/content UI to add more questions (grow beyond seed pool)
