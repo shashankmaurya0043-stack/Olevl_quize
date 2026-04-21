@@ -1,0 +1,43 @@
+{
+  "summary": "Iteration 4 - tested new hidden admin question-upload tool (/admin-u7k2 + /api/admin/*) with Gemini 3 Flash OCR+translation. Backend: 11/11 new admin pytest tests pass + 12/12 existing quiz tests pass (23/23 = 100%). Covered: /api/admin/auth ok/401, header-less requests -> 401, /api/admin/parse text mode returns bilingual MCQ with Devanagari q_hi and a=0 (HTML question), /api/admin/parse image mode with a real rendered PNG (CPU MCQ via PIL/DejaVuSans) returns parsed MCQ mentioning CPU, /api/admin/save inserts with id starting 'ADM-' and rejects invalid subject code 400, /api/admin/list and /api/admin/list?subject=M1 return the saved doc, /api/admin/stats counts[M1]>=1, /api/quiz/start/M1 still returns exactly 20 bilingual questions after admin insert (merge works), /api/admin/question/{id} deletes (200) then 404 on repeat. Frontend: /admin-u7k2 renders admin-login; wrong password triggers admin-toast 'Invalid password'; correct password lands on admin-page with 0 saved; admin-add-blank-btn creates admin-q-editor-0; manually filled bilingual Q/options/correct=B and clicked admin-save-all-btn -> 'Saved 1 question(s) to M1' toast, preview cleared, admin-total-count flipped 0->1, admin-existing-ADM-{id} appeared; paste-text -> admin-parse-btn path also verified via curl/pytest (UI run hit a transient LLM budget 500 during the same session, documented below); admin-delete-{id} removed node; admin-logout-btn returned to login.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "POST /api/admin/parse", "issue": "When EMERGENT_LLM_KEY budget/ratelimit is exceeded, emergentintegrations raises ChatError which propagates as uncaught 500 with internal message 'Failed to generate chat completion: ... Budget has been exceeded'. Wrap _llm_parse in try/except ChatError and return a clean 502/429 with user-friendly detail ('AI service unavailable, try again shortly')."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [
+      {"flow": "Admin parse (text/image)", "issue": "When backend returns 500 due to LLM budget, toast shows 'Parse failed' (no detail since FastAPI 500 has no detail body). Front-end already handles gracefully via fallback message - acceptable, but tied to backend minor issue above.", "affected_selectors": ["admin-parse-btn", "admin-toast"]}
+    ],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_admin_api.py",
+    "/app/backend/tests/test_quiz_api.py",
+    "/app/test_reports/pytest/admin_results.xml",
+    "/app/test_reports/pytest/pytest_results.xml"
+  ],
+  "action_items": [
+    "(Optional, low priority) In server.py::_llm_parse, wrap `await chat.send_message(msg)` in try/except emergentintegrations.llm.chat.ChatError (or generic Exception) and raise HTTPException(502, 'AI service temporarily unavailable') so admin UI shows a clean toast instead of 'Parse failed' for budget/rate errors.",
+    "(Optional) Consider adding a `/admin-u7k2` note in README / onboarding doc so the hidden route is not lost (currently only in .env ADMIN_ROUTE_SLUG)."
+  ],
+  "critical_code_review_comments": [
+    "server.py::_llm_parse does not catch upstream LLM failures (ChatError, BadRequestError) - leaks internal error text through a 500. Should translate to 502/429 with safe message.",
+    "admin endpoints do not validate presence of ADMIN_PASSWORD env var at startup - if unset, verify_admin silently 401s everything which is fine, but /admin/auth would also 401; a startup assert would fail fast.",
+    "/api/admin/save accepts any subject_code in {M1..M4} but does not deduplicate identical q_en entries - admin could insert duplicates that then appear twice in the merged pool.",
+    "Admin.jsx stores the plaintext admin password in localStorage under key 'olevel_admin_pwd_v1'. For a hidden internal tool this is acceptable but worth flagging - any XSS would leak it.",
+    "/api/admin/parse has no file-size / payload limit; a 10MB base64 image would be accepted and sent to Gemini. Consider enforcing max length on `content` (e.g. 3 MB) at pydantic level.",
+    "server.py still uses deprecated @app.on_event('shutdown') (carried from prior iterations) - prefer FastAPI lifespan.",
+    "No TTL index on quiz_sessions or admin_questions (admin_questions shouldn't auto-expire, but sessions should) - carried over."
+  ],
+  "updated_files": ["/app/backend/tests/test_admin_api.py"],
+  "success_rate": {"backend": "100% (23/23 pytest)", "frontend": "~95% (all admin UI flows pass; one transient 500 observed during parse due to LLM budget, reproducible only when budget exhausted; curl-retested parse = 200)"},
+  "test_credentials": "ADMIN_PASSWORD=olevel-admin-7dc75d34 (from /app/backend/.env). /app/memory/test_credentials.md not present; this is the only credential used.",
+  "seed_data_creation": "Tests create TEST_ADM / TEST_UI prefixed admin_questions and self-clean via module fixture + explicit DELETE. No stale data left in db.admin_questions after the run.",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Admin route is /admin-u7k2. Password is in backend/.env as ADMIN_PASSWORD. Use X-Admin-Password header for all /api/admin/* except /api/admin/auth which takes {password} in body. New test file: /app/backend/tests/test_admin_api.py (11 tests, self-cleaning). Existing test_quiz_api.py (12 tests) still 100% green. Frontend data-testids verified: admin-login, admin-password-input, admin-login-btn, admin-page, admin-mode-text, admin-mode-image, admin-text-input, admin-image-input (hidden file input - use set_input_files), admin-subject-select, admin-parse-btn, admin-add-blank-btn, admin-save-all-btn, admin-q-editor-{i}, admin-q-en-{i}, admin-q-hi-{i}, admin-q-opt-en-{i}-{j}, admin-q-opt-hi-{i}-{j}, admin-q-correct-{i}-{j}, admin-exp-en-{i}, admin-exp-hi-{i}, admin-q-remove-{i}, admin-logout-btn, admin-total-count, admin-toast, admin-existing-{id}, admin-delete-{id}. Delete uses window.confirm - must hook dialog handler (page.once('dialog', lambda d: d.accept())). LLM calls can sometimes hit Emergent key budget cap causing 500; retry after a minute.",
+  "rca of the issue": "Single flake observed: admin-parse-btn in UI returned 500. Backend log revealed litellm.BadRequestError 'Budget has been exceeded! Current cost: 0.00214, Max budget: 0.001' from EMERGENT_LLM_KEY. Not a code bug - infrastructure budget cap. Mitigation: wrap _llm_parse LLM call in try/except and surface a 502 with 'AI temporarily unavailable'. Retest of the same endpoint via curl returned 200 moments later, confirming intermittency."
+}

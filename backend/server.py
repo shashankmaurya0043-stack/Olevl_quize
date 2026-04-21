@@ -1,4 +1,4 @@
-from fastapi import FastAPI, APIRouter, HTTPException
+from fastapi import FastAPI, APIRouter, HTTPException, Header, Depends
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
@@ -6,10 +6,14 @@ import os
 import logging
 import random
 import uuid
+import re
+import json as _json
 from pathlib import Path
 from pydantic import BaseModel
-from typing import List, Optional, Dict
+from typing import List, Optional, Dict, Literal
 from datetime import datetime, timezone
+
+from emergentintegrations.llm.chat import LlmChat, UserMessage, ImageContent
 
 from questions import QUESTIONS, SUBJECTS, MOCK_TEST
 
@@ -25,7 +29,7 @@ api_router = APIRouter(prefix="/api")
 
 
 # -----------------------------
-# Pydantic Models (bilingual)
+# Pydantic Models
 # -----------------------------
 class QuestionPublic(BaseModel):
     id: str
@@ -90,6 +94,36 @@ class SubmitQuizResponse(BaseModel):
     review: List[ReviewItem]
 
 
+# ---- Admin models ----
+class AdminAuthRequest(BaseModel):
+    password: str
+
+
+class ParsedMCQ(BaseModel):
+    q_en: str
+    q_hi: str
+    options_en: List[str]
+    options_hi: List[str]
+    a: int
+    exp_en: str = ""
+    exp_hi: str = ""
+
+
+class ParseRequest(BaseModel):
+    mode: Literal["image", "text"]
+    content: str
+    translate_to_hindi: bool = True
+
+
+class ParseResponse(BaseModel):
+    questions: List[ParsedMCQ]
+
+
+class SaveRequest(BaseModel):
+    subject_code: str
+    questions: List[ParsedMCQ]
+
+
 # -----------------------------
 # Helpers
 # -----------------------------
@@ -102,19 +136,141 @@ def _get_subject_meta(code: str):
     return None
 
 
-def _build_question_pool(code: str) -> List[dict]:
+async def _build_question_pool(code: str) -> List[dict]:
+    """Merge static question bank with admin-added questions from MongoDB."""
+    pool: List[dict] = []
     if code == "MOCK":
-        pool = []
         for subj_code, qs in QUESTIONS.items():
             for idx, q in enumerate(qs):
                 pool.append({"id": f"{subj_code}-{idx}", **q})
-        return pool
-    qs = QUESTIONS.get(code, [])
-    return [{"id": f"{code}-{idx}", **q} for idx, q in enumerate(qs)]
+        admin_docs = await db.admin_questions.find({}, {"_id": 0}).to_list(5000)
+        for doc in admin_docs:
+            pool.append(_admin_doc_to_question(doc))
+    else:
+        qs = QUESTIONS.get(code, [])
+        for idx, q in enumerate(qs):
+            pool.append({"id": f"{code}-{idx}", **q})
+        admin_docs = await db.admin_questions.find(
+            {"subject_code": code}, {"_id": 0}
+        ).to_list(5000)
+        for doc in admin_docs:
+            pool.append(_admin_doc_to_question(doc))
+    return pool
+
+
+def _admin_doc_to_question(doc: dict) -> dict:
+    return {
+        "id": doc["id"],
+        "q_en": doc["q_en"],
+        "q_hi": doc["q_hi"],
+        "options_en": doc["options_en"],
+        "options_hi": doc["options_hi"],
+        "a": doc["a"],
+        "exp_en": doc.get("exp_en", ""),
+        "exp_hi": doc.get("exp_hi", ""),
+    }
+
+
+# ---- Admin auth dependency ----
+def verify_admin(x_admin_password: Optional[str] = Header(None)):
+    expected = os.environ.get("ADMIN_PASSWORD")
+    if not expected or x_admin_password != expected:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    return True
+
+
+# ---- LLM parsing ----
+SYSTEM_PROMPT = (
+    "You are an expert MCQ extractor for Indian O Level (NIELIT) exams. "
+    "You convert input text or images into structured bilingual MCQs (English + Devanagari Hindi). "
+    "Always return ONLY a valid JSON array, no prose, no markdown fences."
+)
+
+USER_PROMPT = """Extract one or more MCQs from the given input.
+
+For EACH question, return an object with EXACTLY these fields:
+  - q_en: question text in English
+  - q_hi: question text in proper Devanagari Hindi (not transliteration)
+  - options_en: array of EXACTLY 4 English option strings
+  - options_hi: array of EXACTLY 4 Hindi option strings (Devanagari)
+  - a: integer index 0..3 of the correct option
+  - exp_en: one-sentence English explanation
+  - exp_hi: one-sentence Hindi explanation (Devanagari)
+
+Rules:
+- If fewer than 4 options are provided, generate plausible distractors.
+- If the correct answer is not given, choose the most accurate one using your knowledge.
+- Keep questions factual, exam-style, concise.
+- The Hindi options' order must match the English options' order.
+- Do NOT include markdown code fences or any commentary.
+- Return ONLY a JSON array: [ {...}, {...} ]
+
+Input:
+"""
+
+
+async def _llm_parse(mode: str, content: str) -> List[dict]:
+    api_key = os.environ.get("EMERGENT_LLM_KEY")
+    if not api_key:
+        raise HTTPException(500, "EMERGENT_LLM_KEY not configured")
+
+    chat = LlmChat(
+        api_key=api_key,
+        session_id=str(uuid.uuid4()),
+        system_message=SYSTEM_PROMPT,
+    ).with_model("gemini", "gemini-3-flash-preview")
+
+    if mode == "image":
+        raw_b64 = content.split(",", 1)[1] if content.startswith("data:") else content
+        msg = UserMessage(
+            text=USER_PROMPT + "[Image attached]",
+            file_contents=[ImageContent(image_base64=raw_b64)],
+        )
+    else:
+        msg = UserMessage(text=USER_PROMPT + content)
+
+    response = await chat.send_message(msg)
+    cleaned = response.strip()
+    # strip markdown fences if any
+    cleaned = re.sub(r"^```(?:json)?\s*", "", cleaned)
+    cleaned = re.sub(r"\s*```$", "", cleaned)
+    match = re.search(r"\[[\s\S]*\]", cleaned)
+    if not match:
+        raise HTTPException(502, f"LLM response was not a JSON array: {response[:300]}")
+    try:
+        data = _json.loads(match.group(0))
+    except _json.JSONDecodeError as e:
+        raise HTTPException(502, f"LLM JSON parse failed: {e}")
+    if not isinstance(data, list):
+        raise HTTPException(502, "LLM did not return a list")
+    return data
+
+
+def _normalize_mcq(q: dict) -> dict:
+    opts_en = list(q.get("options_en") or q.get("options") or [])
+    opts_hi = list(q.get("options_hi") or [])
+    while len(opts_en) < 4:
+        opts_en.append("None of these")
+    while len(opts_hi) < 4:
+        opts_hi.append(opts_en[len(opts_hi)] if len(opts_hi) < len(opts_en) else "इनमें से कोई नहीं")
+    try:
+        a = int(q.get("a", 0))
+    except (TypeError, ValueError):
+        a = 0
+    a = max(0, min(3, a))
+    return {
+        "q_en": (q.get("q_en") or "").strip(),
+        "q_hi": (q.get("q_hi") or "").strip(),
+        "options_en": [str(o).strip() for o in opts_en[:4]],
+        "options_hi": [str(o).strip() for o in opts_hi[:4]],
+        "a": a,
+        "exp_en": (q.get("exp_en") or "").strip(),
+        "exp_hi": (q.get("exp_hi") or "").strip(),
+    }
 
 
 # -----------------------------
-# Routes
+# Routes: public
 # -----------------------------
 @api_router.get("/")
 async def root():
@@ -138,7 +294,7 @@ async def start_quiz(code: str):
     if not meta:
         raise HTTPException(status_code=404, detail="Subject not found")
 
-    pool = _build_question_pool(code)
+    pool = await _build_question_pool(code)
     num = meta["num_questions"]
     selected = random.sample(pool, min(num, len(pool)))
 
@@ -165,7 +321,6 @@ async def start_quiz(code: str):
         )
         for q in selected
     ]
-
     return StartQuizResponse(
         session_id=session_id,
         subject_code=code,
@@ -243,6 +398,69 @@ async def submit_quiz(payload: SubmitQuizRequest):
         time_taken_sec=payload.time_taken_sec,
         review=review,
     )
+
+
+# -----------------------------
+# Routes: admin
+# -----------------------------
+@api_router.post("/admin/auth")
+async def admin_auth(payload: AdminAuthRequest):
+    expected = os.environ.get("ADMIN_PASSWORD")
+    if not expected or payload.password != expected:
+        raise HTTPException(status_code=401, detail="Invalid password")
+    return {"ok": True}
+
+
+@api_router.post("/admin/parse", response_model=ParseResponse, dependencies=[Depends(verify_admin)])
+async def admin_parse(payload: ParseRequest):
+    raw = await _llm_parse(payload.mode, payload.content)
+    return ParseResponse(questions=[ParsedMCQ(**_normalize_mcq(q)) for q in raw])
+
+
+@api_router.post("/admin/save", dependencies=[Depends(verify_admin)])
+async def admin_save(payload: SaveRequest):
+    if payload.subject_code not in {"M1", "M2", "M3", "M4"}:
+        raise HTTPException(400, "Invalid subject code")
+    docs = []
+    for q in payload.questions:
+        qid = f"ADM-{uuid.uuid4().hex[:10]}"
+        doc = {
+            "id": qid,
+            "subject_code": payload.subject_code,
+            **q.model_dump(),
+            "created_at": datetime.now(timezone.utc).isoformat(),
+        }
+        docs.append(doc)
+    if docs:
+        await db.admin_questions.insert_many(docs)
+    return {"ok": True, "saved": len(docs), "ids": [d["id"] for d in docs]}
+
+
+@api_router.get("/admin/list", dependencies=[Depends(verify_admin)])
+async def admin_list(subject: Optional[str] = None):
+    filt: dict = {}
+    if subject:
+        filt["subject_code"] = subject.upper()
+    docs = (
+        await db.admin_questions.find(filt, {"_id": 0}).sort("created_at", -1).to_list(1000)
+    )
+    return {"questions": docs, "count": len(docs)}
+
+
+@api_router.delete("/admin/question/{qid}", dependencies=[Depends(verify_admin)])
+async def admin_delete(qid: str):
+    res = await db.admin_questions.delete_one({"id": qid})
+    if res.deleted_count == 0:
+        raise HTTPException(404, "Question not found")
+    return {"ok": True, "deleted": res.deleted_count}
+
+
+@api_router.get("/admin/stats", dependencies=[Depends(verify_admin)])
+async def admin_stats():
+    counts = {}
+    for code in ("M1", "M2", "M3", "M4"):
+        counts[code] = await db.admin_questions.count_documents({"subject_code": code})
+    return {"counts": counts, "total": sum(counts.values())}
 
 
 app.include_router(api_router)
