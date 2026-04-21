@@ -229,7 +229,15 @@ async def _llm_parse(mode: str, content: str) -> List[dict]:
     else:
         msg = UserMessage(text=USER_PROMPT + content)
 
-    response = await chat.send_message(msg)
+    try:
+        response = await chat.send_message(msg)
+    except Exception as e:
+        detail = str(e)
+        if "budget" in detail.lower() or "rate" in detail.lower():
+            raise HTTPException(
+                502, "AI service temporarily unavailable (budget/rate limit). Try again shortly."
+            )
+        raise HTTPException(502, f"AI service error: {detail[:200]}")
     cleaned = response.strip()
     # strip markdown fences if any
     cleaned = re.sub(r"^```(?:json)?\s*", "", cleaned)

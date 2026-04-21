@@ -34,7 +34,15 @@ Create a quiz website for O Level exam preparation. Subjects: M1, M2, M3 (Python
 - Mobile-first neo-brutalist UI with hard shadows, pastel subject colors, hover press effect
 - All data-testid attributes applied; backend + frontend tests pass 100%
 
-## Implemented (Feature wave 2)
+## Implemented (Feature wave 3 — Admin tool)
+- **Hidden admin panel** at `/admin-u7k2` (not linked from nav); password-gated via `ADMIN_PASSWORD` in `backend/.env`
+- **Admin password**: `olevel-admin-7dc75d34` (stored only in `backend/.env`)
+- **Gemini 3 Flash integration** (`gemini-3-flash-preview` via Emergent Universal Key) for OCR + MCQ parsing + Hindi translation
+- **Two input modes**: paste text / upload image (PNG/JPEG/WEBP)
+- **Bulk parsing + editable preview**: parses multiple MCQs at once, admin can edit every field (q, options, correct answer radio, Hindi translation, explanation) before saving
+- **MongoDB storage** in `admin_questions` collection; admin questions **merged** into the quiz pool so users see them immediately
+- **Admin UI extras**: stats per subject, existing-questions list, delete, add-blank, logout
+- **Graceful LLM error handling**: 502 with friendly message on budget/rate-limit failures
 - **Bilingual question bank**: 100+ Qs × 4 subjects (405 total) — full English + proper Hindi (Devanagari) for every question, option, and explanation
 - **Live language toggle** (EN / हिं) in navbar + quiz header — switches any time, even mid-quiz
 - **Dark mode** with inverted neo-brutalist shadows, persisted in localStorage
