@@ -277,6 +277,11 @@ def _normalize_mcq(q: dict) -> dict:
     }
 
 
+def _normalize_q_en(s: str) -> str:
+    """Trim, collapse whitespace, lowercase for dedup comparison."""
+    return " ".join((s or "").strip().lower().split())
+
+
 # -----------------------------
 # Routes: public
 # -----------------------------
@@ -429,19 +434,49 @@ async def admin_parse(payload: ParseRequest):
 async def admin_save(payload: SaveRequest):
     if payload.subject_code not in {"M1", "M2", "M3", "M4"}:
         raise HTTPException(400, "Invalid subject code")
+
+    # Build set of existing normalized q_en for this subject
+    existing = set()
+    for q in QUESTIONS.get(payload.subject_code, []):
+        existing.add(_normalize_q_en(q["q_en"]))
+    existing_admin = await db.admin_questions.find(
+        {"subject_code": payload.subject_code}, {"q_en": 1, "_id": 0}
+    ).to_list(10000)
+    for d in existing_admin:
+        existing.add(_normalize_q_en(d.get("q_en", "")))
+
     docs = []
+    skipped = []
+    seen_in_batch = set()
     for q in payload.questions:
+        norm = _normalize_q_en(q.q_en)
+        if not norm:
+            skipped.append({"q_en": q.q_en, "reason": "empty"})
+            continue
+        if norm in existing or norm in seen_in_batch:
+            skipped.append({"q_en": q.q_en, "reason": "duplicate"})
+            continue
+        seen_in_batch.add(norm)
         qid = f"ADM-{uuid.uuid4().hex[:10]}"
         doc = {
             "id": qid,
             "subject_code": payload.subject_code,
             **q.model_dump(),
+            "q_en_norm": norm,
             "created_at": datetime.now(timezone.utc).isoformat(),
         }
         docs.append(doc)
+
     if docs:
         await db.admin_questions.insert_many(docs)
-    return {"ok": True, "saved": len(docs), "ids": [d["id"] for d in docs]}
+
+    return {
+        "ok": True,
+        "saved": len(docs),
+        "skipped": len(skipped),
+        "duplicates": [s["q_en"] for s in skipped if s["reason"] == "duplicate"],
+        "ids": [d["id"] for d in docs],
+    }
 
 
 @api_router.get("/admin/list", dependencies=[Depends(verify_admin)])

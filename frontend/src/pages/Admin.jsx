@@ -328,10 +328,21 @@ const Admin = () => {
     setSaving(true);
     try {
       const res = await adminSave(subject, questions);
-      showToast("success", `Saved ${res.saved} question(s) to ${subject}`);
-      setQuestions([]);
-      setRawText("");
-      setImageDataUrl("");
+      const saved = res.saved ?? 0;
+      const skipped = res.skipped ?? 0;
+      if (saved === 0 && skipped > 0) {
+        showToast("error", `All ${skipped} were duplicates — nothing saved`);
+      } else if (skipped > 0) {
+        showToast("success", `Saved ${saved} to ${subject} · ${skipped} duplicate(s) skipped`);
+        setQuestions([]);
+        setRawText("");
+        setImageDataUrl("");
+      } else {
+        showToast("success", `Saved ${saved} question(s) to ${subject}`);
+        setQuestions([]);
+        setRawText("");
+        setImageDataUrl("");
+      }
       refresh();
     } catch (e) {
       showToast("error", e?.response?.data?.detail || "Save failed");
