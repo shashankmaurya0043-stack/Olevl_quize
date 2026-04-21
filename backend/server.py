@@ -523,6 +523,18 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
+@app.on_event("startup")
+async def _create_indexes():
+    try:
+        await db.admin_questions.create_index(
+            [("subject_code", 1), ("q_en_norm", 1)],
+            name="subject_qennorm_idx",
+        )
+        logger.info("admin_questions index ensured: subject_qennorm_idx")
+    except Exception as e:
+        logger.warning("Failed creating admin_questions index: %s", e)
+
+
 @app.on_event("shutdown")
 async def shutdown_db_client():
     client.close()
