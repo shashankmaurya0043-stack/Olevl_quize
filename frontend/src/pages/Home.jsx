@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import Navbar from "../components/Navbar";
 import { getSubjects, getMockInfo } from "../lib/api";
+import { useLang } from "../lib/lang";
 
 const SUBJECT_VISUALS = {
   M1: { bg: "bg-m1", Icon: Wrench, emoji: "IT" },
@@ -25,6 +26,7 @@ const SUBJECT_VISUALS = {
 
 const Home = () => {
   const navigate = useNavigate();
+  const { isHi } = useLang();
   const [subjects, setSubjects] = useState([]);
   const [mock, setMock] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -193,10 +195,10 @@ const Home = () => {
                   </div>
 
                   <h3 className="font-heading font-black text-xl sm:text-2xl mt-5 leading-tight">
-                    {s.name}
+                    {isHi && s.name_hi ? s.name_hi : s.name}
                   </h3>
                   <p className="text-sm font-medium text-zinc-800 mt-2">
-                    {s.desc}
+                    {isHi && s.desc_hi ? s.desc_hi : s.desc}
                   </p>
 
                   <div className="flex items-center justify-between mt-6">

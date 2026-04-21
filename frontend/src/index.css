@@ -145,3 +145,118 @@ html {
 .pulse-timer {
   animation: pulseTimer 1s infinite;
 }
+
+/* ============ DARK MODE (Neo-brutalist inverted) ============ */
+html.dark {
+  color-scheme: dark;
+}
+
+html.dark body {
+  background-color: #0A0A0A;
+  color: #F5F5F5;
+}
+
+html.dark .bg-\[\#FDFBF7\] {
+  background-color: #0A0A0A !important;
+}
+
+html.dark .bg-white {
+  background-color: #18181B !important;
+  color: #F5F5F5;
+}
+
+html.dark .text-black {
+  color: #F5F5F5 !important;
+}
+
+html.dark .border-black {
+  border-color: #F5F5F5 !important;
+}
+
+html.dark .border-b-2.border-black {
+  border-color: #F5F5F5 !important;
+}
+
+html.dark .nb-border {
+  border-color: #F5F5F5;
+}
+
+html.dark .nb-shadow {
+  box-shadow: 4px 4px 0px 0px rgba(245, 245, 245, 1);
+}
+html.dark .nb-shadow-sm {
+  box-shadow: 3px 3px 0px 0px rgba(245, 245, 245, 1);
+}
+html.dark .nb-shadow-lg {
+  box-shadow: 6px 6px 0px 0px rgba(245, 245, 245, 1);
+}
+html.dark .nb-hover:hover {
+  box-shadow: 2px 2px 0px 0px rgba(245, 245, 245, 1) !important;
+}
+html.dark .nb-hover-lg:hover {
+  box-shadow: 3px 3px 0px 0px rgba(245, 245, 245, 1) !important;
+}
+
+html.dark .nb-progress-track {
+  background: #18181B;
+  border-color: #F5F5F5;
+}
+html.dark .nb-progress-fill {
+  background: #F5F5F5;
+}
+
+/* Keep pastel subject cards vibrant but force dark text for readability */
+html.dark .bg-m1,
+html.dark .bg-m2,
+html.dark .bg-m3,
+html.dark .bg-m4,
+html.dark .bg-yellow-300,
+html.dark .bg-green-300,
+html.dark .bg-blue-300,
+html.dark .bg-pink-300,
+html.dark .bg-orange-300,
+html.dark .bg-red-300 {
+  color: #0A0A0A;
+}
+
+/* Black CTA inverts to white in dark mode for contrast */
+html.dark .bg-black {
+  background-color: #F5F5F5 !important;
+  color: #0A0A0A !important;
+}
+html.dark .bg-black * {
+  color: #0A0A0A !important;
+}
+
+/* Blue CTAs stay bright */
+html.dark .bg-blue-500 {
+  color: #FFFFFF !important;
+}
+html.dark .bg-blue-100 {
+  background-color: #1E3A8A !important;
+  color: #FFFFFF !important;
+}
+html.dark .bg-yellow-100 {
+  background-color: #422006 !important;
+  color: #FEF3C7 !important;
+}
+html.dark .bg-green-100 {
+  background-color: #14532D !important;
+  color: #DCFCE7 !important;
+}
+html.dark .bg-red-100 {
+  background-color: #7F1D1D !important;
+  color: #FEE2E2 !important;
+}
+
+html.dark .text-zinc-600,
+html.dark .text-zinc-700,
+html.dark .text-zinc-800 {
+  color: #D4D4D8 !important;
+}
+html.dark .text-zinc-500 {
+  color: #A1A1AA !important;
+}
+html.dark .text-zinc-400 {
+  color: #71717A !important;
+}

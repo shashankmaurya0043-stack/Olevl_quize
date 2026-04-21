@@ -7,7 +7,7 @@ import logging
 import random
 import uuid
 from pathlib import Path
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 from typing import List, Optional, Dict
 from datetime import datetime, timezone
 
@@ -25,27 +25,32 @@ api_router = APIRouter(prefix="/api")
 
 
 # -----------------------------
-# Pydantic Models
+# Pydantic Models (bilingual)
 # -----------------------------
 class QuestionPublic(BaseModel):
     id: str
-    q: str
-    options: List[str]
+    q_en: str
+    q_hi: str
+    options_en: List[str]
+    options_hi: List[str]
 
 
 class Subject(BaseModel):
     code: str
     name: str
+    name_hi: str
     color: str
     duration_min: int
     num_questions: int
     desc: str
+    desc_hi: str
 
 
 class StartQuizResponse(BaseModel):
     session_id: str
     subject_code: str
     subject_name: str
+    subject_name_hi: str
     duration_min: int
     num_questions: int
     questions: List[QuestionPublic]
@@ -53,24 +58,28 @@ class StartQuizResponse(BaseModel):
 
 class SubmitQuizRequest(BaseModel):
     session_id: str
-    answers: Dict[str, Optional[int]]  # question_id -> selected option index (or None)
+    answers: Dict[str, Optional[int]]
     time_taken_sec: int = 0
 
 
 class ReviewItem(BaseModel):
     id: str
-    q: str
-    options: List[str]
+    q_en: str
+    q_hi: str
+    options_en: List[str]
+    options_hi: List[str]
     correct: int
     selected: Optional[int]
     is_correct: bool
-    explanation: str
+    explanation_en: str
+    explanation_hi: str
 
 
 class SubmitQuizResponse(BaseModel):
     session_id: str
     subject_code: str
     subject_name: str
+    subject_name_hi: str
     score: int
     total: int
     percentage: float
@@ -94,7 +103,6 @@ def _get_subject_meta(code: str):
 
 
 def _build_question_pool(code: str) -> List[dict]:
-    """Return list of questions (with correct answers) including a synthetic id."""
     if code == "MOCK":
         pool = []
         for subj_code, qs in QUESTIONS.items():
@@ -135,24 +143,34 @@ async def start_quiz(code: str):
     selected = random.sample(pool, min(num, len(pool)))
 
     session_id = str(uuid.uuid4())
-    # Persist answer key (so we can verify on submit even if user tampers)
     session_doc = {
         "session_id": session_id,
         "subject_code": code,
         "subject_name": meta["name"],
+        "subject_name_hi": meta.get("name_hi", meta["name"]),
         "duration_min": meta["duration_min"],
         "created_at": datetime.now(timezone.utc).isoformat(),
-        "questions": selected,  # includes a, exp
+        "questions": selected,
         "submitted": False,
     }
     await db.quiz_sessions.insert_one(session_doc)
 
-    public_qs = [QuestionPublic(id=q["id"], q=q["q"], options=q["options"]) for q in selected]
+    public_qs = [
+        QuestionPublic(
+            id=q["id"],
+            q_en=q["q_en"],
+            q_hi=q["q_hi"],
+            options_en=q["options_en"],
+            options_hi=q["options_hi"],
+        )
+        for q in selected
+    ]
 
     return StartQuizResponse(
         session_id=session_id,
         subject_code=code,
         subject_name=meta["name"],
+        subject_name_hi=meta.get("name_hi", meta["name"]),
         duration_min=meta["duration_min"],
         num_questions=len(selected),
         questions=public_qs,
@@ -183,12 +201,15 @@ async def submit_quiz(payload: SubmitQuizRequest):
         review.append(
             ReviewItem(
                 id=qid,
-                q=q["q"],
-                options=q["options"],
+                q_en=q["q_en"],
+                q_hi=q["q_hi"],
+                options_en=q["options_en"],
+                options_hi=q["options_hi"],
                 correct=q["a"],
                 selected=selected,
                 is_correct=is_correct,
-                explanation=q.get("exp", ""),
+                explanation_en=q.get("exp_en", ""),
+                explanation_hi=q.get("exp_hi", ""),
             )
         )
 
@@ -212,6 +233,7 @@ async def submit_quiz(payload: SubmitQuizRequest):
         session_id=payload.session_id,
         subject_code=session["subject_code"],
         subject_name=session["subject_name"],
+        subject_name_hi=session.get("subject_name_hi", session["subject_name"]),
         score=correct_count,
         total=total,
         percentage=percentage,
