@@ -2,7 +2,6 @@ import { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate, Navigate } from "react-router-dom";
 import {
   Trophy,
-  ArrowLeft,
   RefreshCw,
   ChevronDown,
   Check,
@@ -239,14 +238,6 @@ const Results = () => {
         </div>
 
         <div className="mt-10 flex items-center justify-center gap-3 flex-wrap">
-          <button
-            data-testid="results-back-home-btn"
-            onClick={() => navigate("/")}
-            className="inline-flex items-center gap-2 bg-white font-heading font-bold px-5 py-2.5 rounded-xl nb-border nb-shadow nb-hover"
-          >
-            <ArrowLeft className="w-4 h-4" strokeWidth={2.5} />
-            {t(lang, "back_to_home")}
-          </button>
           <button
             data-testid="results-again-btn"
             onClick={() => navigate(`/quiz/${result.subject_code}`)}
