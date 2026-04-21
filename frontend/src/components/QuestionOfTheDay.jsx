@@ -81,8 +81,8 @@ const QuestionOfTheDay = () => {
       ? isHi ? "मेरा जवाब सही था ✅" : "I got it right ✅"
       : isHi ? "मेरा जवाब गलत था ❌" : "I got it wrong ❌";
     const msg = isHi
-      ? `📅 आज का प्रश्न (${subjLabel})\n\n${qText}\n\nसही उत्तर: ${correctOpt}\n${verdict}\n\nआप भी कोशिश करें — OLevel.Quiz`
-      : `📅 Question of the Day (${subjLabel})\n\n${qText}\n\nCorrect: ${correctOpt}\n${verdict}\n\nTry it yourself — OLevel.Quiz`;
+      ? `\uD83D\uDCC5 आज का प्रश्न (${subjLabel})\n\n${qText}\n\nसही उत्तर: ${correctOpt}\n${verdict}\n\nआप भी कोशिश करें — OLevel.Quiz`
+      : `\uD83D\uDCC5 Question of the Day (${subjLabel})\n\n${qText}\n\nCorrect: ${correctOpt}\n${verdict}\n\nTry it yourself — OLevel.Quiz`;
     const url = `https://wa.me/?text=${encodeURIComponent(msg)}`;
     window.open(url, "_blank", "noopener,noreferrer");
   };
