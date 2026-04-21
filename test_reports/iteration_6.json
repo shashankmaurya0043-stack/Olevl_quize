@@ -1,0 +1,32 @@
+{
+  "summary": "Tested QotD v2 upgrades: (1) MongoDB qotd_daily caching & unique date index, (2) server-side scoring via POST /api/qotd/submit with no answer leak in GET /api/qotd. Backend: 34/34 pytest tests pass (11 new + existing regression intact). Frontend Playwright E2E: clean localStorage flow confirms card renders, network GET /api/qotd returns only public keys (no a/exp_en/exp_hi), option click fires /api/qotd/submit with {date,qid,selected}, server returns {is_correct,correct_index,explanation_en,explanation_hi}, correct option highlighted green, wrong-selected red, options lock, reload preserves locked state via localStorage 'olevel_qotd_v1', and share button opens wa.me/?text=... with score message. Calendar emoji in share now encodes correctly (previous iteration's cosmetic bug is fixed).",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_qotd_api.py",
+    "/app/test_reports/pytest/qotd_v2_results.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "server.py now 655 lines (up from 585). Approaching the 700-line threshold; consider splitting into routers (quiz, admin, qotd) soon for maintainability.",
+    "POST /api/qotd/submit has no rate limiting and no user/session tie-in, so an attacker can brute-force all 4 options to learn correct_index without consequence. Acceptable for a casual daily card, but if tamper-resistance matters, consider (a) returning explanation only on first submit per IP/session, or (b) requiring a client nonce from GET /qotd that's single-use.",
+    "QotdSubmitRequest.selected has no bounds validation (0-3). An out-of-range selected (e.g., 99) currently just returns is_correct=False silently. Add Pydantic Field(ge=0, le=3) and/or 422 for clarity.",
+    "Frontend QuestionOfTheDay.jsx handlePick swallows submit errors with only console.error — user sees no feedback if /api/qotd/submit fails (network down, 500). Consider a small 'try again' toast/inline error."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_qotd_api.py (rewritten for v2: no-leak shape, cache/index, submit correct/400/404, regression)"
+  ],
+  "success_rate": {"backend": "100% (34/34)", "frontend": "100% (all spec checks passed)"},
+  "test_credentials": "n/a for QotD; admin password via backend/.env ADMIN_PASSWORD (unchanged)",
+  "seed_data_creation": "none — tests use today's organically-cached QotD (M4-0, a=0)",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "QotD v2 fully verified for UTC 2026-04-21 (cached id=M4-0, correct_index=0). /api/qotd cleanly returns 7 public keys only; /api/qotd/submit returns {ok,is_correct,correct_index,explanation_en,explanation_hi}. qotd_daily has unique index 'qotd_date_unique' on date. Before frontend tests always run: await page.evaluate(\"() => localStorage.removeItem('olevel_qotd_v1')\"); await page.reload(). To test fresh cache-insert path: mongo shell -> db.qotd_daily.delete_many({date:'YYYY-MM-DD'}). Tests live in /app/backend/tests/test_qotd_api.py — run with REACT_APP_BACKEND_URL env loaded from frontend/.env (KeyError otherwise). All prior admin & quiz flows still green."
+}

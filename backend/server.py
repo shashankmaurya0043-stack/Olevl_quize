@@ -301,12 +301,33 @@ async def mock_info():
     return MOCK_TEST
 
 
+class QotdSubmitRequest(BaseModel):
+    date: str
+    qid: str
+    selected: int
+
+
 @api_router.get("/qotd")
 async def question_of_the_day():
-    """Deterministic Question of the Day, picked by today's UTC date from the
-    merged static + admin pool. Same for all users on the same UTC day.
+    """Deterministic Question of the Day — cached in qotd_daily once per UTC day.
+    Correct answer index and explanations are NEVER returned here; clients must
+    POST /api/qotd/submit to get scoring.
     """
     today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+
+    cached = await db.qotd_daily.find_one({"date": today}, {"_id": 0})
+    if cached:
+        return {
+            "date": cached["date"],
+            "id": cached["id"],
+            "subject_code": cached.get("subject_code", ""),
+            "q_en": cached["q_en"],
+            "q_hi": cached["q_hi"],
+            "options_en": cached["options_en"],
+            "options_hi": cached["options_hi"],
+        }
+
+    # First call of the day → pick & cache
     pool: List[dict] = []
     for subj_code, qs in QUESTIONS.items():
         for idx, q in enumerate(qs):
@@ -330,7 +351,7 @@ async def question_of_the_day():
 
     seed = int(hashlib.md5(today.encode()).hexdigest(), 16)
     chosen = pool[seed % len(pool)]
-    return {
+    cache_doc = {
         "date": today,
         "id": chosen["id"],
         "subject_code": chosen.get("subject_code", ""),
@@ -341,6 +362,51 @@ async def question_of_the_day():
         "a": chosen["a"],
         "exp_en": chosen.get("exp_en", ""),
         "exp_hi": chosen.get("exp_hi", ""),
+        "created_at": datetime.now(timezone.utc).isoformat(),
+    }
+    try:
+        await db.qotd_daily.insert_one(cache_doc)
+    except Exception:
+        # Concurrent insert: re-read the cached one
+        cached = await db.qotd_daily.find_one({"date": today}, {"_id": 0})
+        if cached:
+            return {
+                "date": cached["date"],
+                "id": cached["id"],
+                "subject_code": cached.get("subject_code", ""),
+                "q_en": cached["q_en"],
+                "q_hi": cached["q_hi"],
+                "options_en": cached["options_en"],
+                "options_hi": cached["options_hi"],
+            }
+        raise
+
+    return {
+        "date": cache_doc["date"],
+        "id": cache_doc["id"],
+        "subject_code": cache_doc["subject_code"],
+        "q_en": cache_doc["q_en"],
+        "q_hi": cache_doc["q_hi"],
+        "options_en": cache_doc["options_en"],
+        "options_hi": cache_doc["options_hi"],
+    }
+
+
+@api_router.post("/qotd/submit")
+async def submit_qotd(payload: QotdSubmitRequest):
+    cached = await db.qotd_daily.find_one({"date": payload.date}, {"_id": 0})
+    if not cached:
+        raise HTTPException(404, "No QotD cached for that date")
+    if cached["id"] != payload.qid:
+        raise HTTPException(400, "Question ID does not match today's QotD")
+    correct_index = int(cached["a"])
+    is_correct = int(payload.selected) == correct_index
+    return {
+        "ok": True,
+        "is_correct": is_correct,
+        "correct_index": correct_index,
+        "explanation_en": cached.get("exp_en", ""),
+        "explanation_hi": cached.get("exp_hi", ""),
     }
 
 
@@ -577,6 +643,11 @@ async def _create_indexes():
         logger.info("admin_questions index ensured: subject_qennorm_idx")
     except Exception as e:
         logger.warning("Failed creating admin_questions index: %s", e)
+    try:
+        await db.qotd_daily.create_index("date", unique=True, name="qotd_date_unique")
+        logger.info("qotd_daily index ensured: qotd_date_unique")
+    except Exception as e:
+        logger.warning("Failed creating qotd_daily index: %s", e)
 
 
 @app.on_event("shutdown")

@@ -8,6 +8,8 @@ export const api = axios.create({ baseURL: API });
 export const getSubjects = () => api.get("/subjects").then((r) => r.data);
 export const getMockInfo = () => api.get("/mock-test-info").then((r) => r.data);
 export const getQotd = () => api.get("/qotd").then((r) => r.data);
+export const submitQotd = (payload) =>
+  api.post("/qotd/submit", payload).then((r) => r.data);
 export const startQuiz = (code) =>
   api.get(`/quiz/start/${code}`).then((r) => r.data);
 export const submitQuiz = (payload) =>

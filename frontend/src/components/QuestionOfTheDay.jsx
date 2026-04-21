@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { CalendarDays, Sparkles, Check, X, Share2, Loader2, Trophy } from "lucide-react";
-import { getQotd } from "../lib/api";
+import { getQotd, submitQotd } from "../lib/api";
 import { getQotdState, saveQotdAttempt } from "../lib/qotd";
 import { useLang } from "../lib/lang";
 
@@ -58,25 +58,43 @@ const QuestionOfTheDay = () => {
 
   const view = attemptedToday && state?.snapshot ? state.snapshot : data;
 
-  const handlePick = (idx) => {
+  const handlePick = async (idx) => {
     if (!data || attemptedToday) return;
-    const isCorrect = idx === data.a;
-    const snapshot = { ...data };
-    saveQotdAttempt({
-      date: data.date,
-      qid: data.id,
-      selected: idx,
-      isCorrect,
-      snapshot,
-    });
-    setState({ date: data.date, qid: data.id, selected: idx, isCorrect, snapshot });
+    try {
+      const res = await submitQotd({ date: data.date, qid: data.id, selected: idx });
+      const snapshot = {
+        ...data,
+        correct_index: res.correct_index,
+        explanation_en: res.explanation_en,
+        explanation_hi: res.explanation_hi,
+      };
+      saveQotdAttempt({
+        date: data.date,
+        qid: data.id,
+        selected: idx,
+        isCorrect: res.is_correct,
+        snapshot,
+      });
+      setState({
+        date: data.date,
+        qid: data.id,
+        selected: idx,
+        isCorrect: res.is_correct,
+        snapshot,
+      });
+    } catch (e) {
+      // fail silently — user can retry the click
+      // eslint-disable-next-line no-console
+      console.error("QotD submit failed", e);
+    }
   };
 
   const handleShare = () => {
     if (!view) return;
     const subjLabel = SUBJECT_LABELS[view.subject_code]?.[isHi ? "hi" : "en"] || view.subject_code;
     const qText = isHi ? view.q_hi : view.q_en;
-    const correctOpt = (isHi ? view.options_hi : view.options_en)[view.a];
+    const correctIdx = view.correct_index ?? view.a ?? 0;
+    const correctOpt = (isHi ? view.options_hi : view.options_en)[correctIdx];
     const verdict = state?.isCorrect
       ? isHi ? "मेरा जवाब सही था ✅" : "I got it right ✅"
       : isHi ? "मेरा जवाब गलत था ❌" : "I got it wrong ❌";
@@ -137,7 +155,8 @@ const QuestionOfTheDay = () => {
 
       <div className="mt-5 space-y-2">
         {optionTexts.map((opt, idx) => {
-          const isCorrect = idx === view.a;
+          const correctIdx = view.correct_index ?? view.a;
+          const isCorrect = idx === correctIdx;
           const isSelected = attemptedToday && state?.selected === idx;
           let cls =
             "bg-white border-zinc-300 text-zinc-800 hover:bg-zinc-50";
@@ -191,13 +210,13 @@ const QuestionOfTheDay = () => {
             )}
           </div>
 
-          {(isHi ? view.exp_hi : view.exp_en) && (
+          {(isHi ? (view.explanation_hi ?? view.exp_hi) : (view.explanation_en ?? view.exp_en)) && (
             <div className="bg-white nb-border rounded-xl p-3 nb-shadow-sm">
               <div className="text-[10px] font-bold uppercase tracking-widest text-zinc-600 mb-1">
                 {isHi ? "व्याख्या" : "Explanation"}
               </div>
               <p className="text-sm font-body leading-relaxed">
-                {isHi ? view.exp_hi : view.exp_en}
+                {isHi ? (view.explanation_hi ?? view.exp_hi) : (view.explanation_en ?? view.exp_en)}
               </p>
             </div>
           )}
