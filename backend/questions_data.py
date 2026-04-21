@@ -600,3 +600,27 @@ M4 = [
 ]
 
 ALL_QUESTIONS = {"M1": M1, "M2": M2, "M3": M3, "M4": M4}
+
+# Extend with extras (50 more per subject) → total 100 per subject
+try:
+    from extras_m1 import M1_EXTRA
+    from extras_m2 import M2_EXTRA
+    from extras_m3 import M3_EXTRA
+    from extras_m4 import M4_EXTRA
+    ALL_QUESTIONS = {
+        "M1": M1 + M1_EXTRA,
+        "M2": M2 + M2_EXTRA,
+        "M3": M3 + M3_EXTRA,
+        "M4": M4 + M4_EXTRA,
+    }
+except ImportError:
+    pass
+
+# Top-up to guarantee 100+ per subject
+try:
+    from extras_topup import TOPUP
+    for _code, _items in TOPUP.items():
+        if _code in ALL_QUESTIONS:
+            ALL_QUESTIONS[_code] = ALL_QUESTIONS[_code] + _items
+except ImportError:
+    pass

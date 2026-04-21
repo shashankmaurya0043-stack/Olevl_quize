@@ -3,7 +3,6 @@ import { useLocation, useNavigate, Navigate } from "react-router-dom";
 import {
   Trophy,
   ArrowLeft,
-  Home,
   RefreshCw,
   ChevronDown,
   Check,
@@ -13,6 +12,7 @@ import {
 } from "lucide-react";
 import { saveAttempt } from "../lib/history";
 import { useLang, t } from "../lib/lang";
+import Navbar from "../components/Navbar";
 
 const tierFor = (pct, isHi) => {
   if (pct >= 90) return { label: isHi ? "शानदार! 🏆" : "Ek number! 🏆", color: "bg-yellow-300" };
@@ -75,16 +75,9 @@ const Results = () => {
 
   return (
     <div data-testid="results-page" className="min-h-screen bg-[#FDFBF7]">
-      <header className="border-b-2 border-black bg-[#FDFBF7] sticky top-0 z-20">
+      <Navbar />
+      <div className="border-b-2 border-black bg-[#FDFBF7]">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 py-3 flex items-center justify-between gap-3">
-          <button
-            data-testid="results-home-btn"
-            onClick={() => navigate("/")}
-            className="inline-flex items-center gap-2 bg-white font-heading font-bold px-3 py-1.5 rounded-lg nb-border nb-shadow-sm nb-hover text-sm"
-          >
-            <Home className="w-4 h-4" strokeWidth={2.5} />
-            {t(lang, "home")}
-          </button>
           <div className="font-heading font-black text-lg truncate">
             {isHi ? "परिणाम" : "Your Result"}
           </div>
@@ -97,7 +90,7 @@ const Results = () => {
             {t(lang, "retry")}
           </button>
         </div>
-      </header>
+      </div>
 
       <main className="max-w-4xl mx-auto px-4 sm:px-6 py-8">
         <div className={`${tier.color} nb-border rounded-3xl p-6 sm:p-10 nb-shadow-lg animate-pop`}>
