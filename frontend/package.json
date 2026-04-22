@@ -60,7 +60,7 @@
     "test": "craco test"
   },
   "engines": {
-    "node": "18.x"
+    "node": ">=18.0.0"
   },
   "browserslist": {
     "production": [
