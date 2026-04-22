@@ -21,9 +21,19 @@ from questions import QUESTIONS, SUBJECTS, MOCK_TEST
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
 
-mongo_url = os.environ['MONGO_URL']
+# Safely read required env vars so the app fails with a clear message
+# instead of a raw KeyError (works locally via .env and on Render via dashboard env vars).
+mongo_url = os.getenv('MONGO_URL')
+db_name = os.getenv('DB_NAME', 'olevel_quiz')
+
+if not mongo_url:
+    raise RuntimeError(
+        "MONGO_URL environment variable is not set. "
+        "Set it in backend/.env for local runs, or in Render → Environment for deployment."
+    )
+
 client = AsyncIOMotorClient(mongo_url)
-db = client[os.environ['DB_NAME']]
+db = client[db_name]
 
 app = FastAPI()
 api_router = APIRouter(prefix="/api")
