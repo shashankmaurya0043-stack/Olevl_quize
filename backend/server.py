@@ -220,49 +220,53 @@ Input:
 """
 
 
-async def _llm_parse(mode: str, content: str) -> List[dict]:
-    api_key = os.environ.get("EMERGENT_LLM_KEY")
-    if not api_key:
-        raise HTTPException(500, "EMERGENT_LLM_KEY not configured")
+#async def _llm_parse(mode: str, content: str) -> List[dict]:
+    #api_key = os.environ.get("EMERGENT_LLM_KEY")
+  #  if not api_key:
+  #
+#
+#
+#raise HTTPException(500, "EMERGENT_LLM_KEY not configured")
 
-    chat = LlmChat(
-        api_key=api_key,
-        session_id=str(uuid.uuid4()),
-        system_message=SYSTEM_PROMPT,
-    ).with_model("gemini", "gemini-3-flash-preview")
+ #chat = LlmChat(
+     #   api_key=api_key,
+     #   session_id=str(uuid.uuid4()),
+     #   system_message=SYSTEM_PROMPT,
+    #).with_model("gemini", "gemini-3-flash-preview")
 
-    if mode == "image":
-        raw_b64 = content.split(",", 1)[1] if content.startswith("data:") else content
-        msg = UserMessage(
-            text=USER_PROMPT + "[Image attached]",
-            file_contents=[ImageContent(image_base64=raw_b64)],
-        )
-    else:
-        msg = UserMessage(text=USER_PROMPT + content)
-
-    try:
-        response = await chat.send_message(msg)
-    except Exception as e:
-        detail = str(e)
-        if "budget" in detail.lower() or "rate" in detail.lower():
-            raise HTTPException(
-                502, "AI service temporarily unavailable (budget/rate limit). Try again shortly."
-            )
-        raise HTTPException(502, f"AI service error: {detail[:200]}")
-    cleaned = response.strip()
+#    if mode == "image":
+    #    raw_b64 = content.split(",", 1)[1] if content.startswith("data:") else content
+     #   msg = UserMessage(
+   #         text=USER_PROMPT + "[Image attached]",
+           # file_contents=[ImageContent(image_base64=raw_b64)],
+     #   )
+ #   else:
+      #  msg = UserMessage(text=USER_PROMPT + content)
+#
+ #   try:
+      #  response = await chat.send_message(msg)
+  #  except Exception as e:
+     #   detail = str(e)
+     #   if "budget" in detail.lower() or "rate" in detail.lower():
+          #  raise HTTPException(
+            #    502, "AI service temporarily unavailable (budget/rate limit). Try again shortly."
+        #    )
+      #  raise HTTPException(502, f"AI service error: {detail[:200]}")
+    #cleaned = response.strip()
     # strip markdown fences if any
-    cleaned = re.sub(r"^```(?:json)?\s*", "", cleaned)
-    cleaned = re.sub(r"\s*```$", "", cleaned)
-    match = re.search(r"\[[\s\S]*\]", cleaned)
-    if not match:
-        raise HTTPException(502, f"LLM response was not a JSON array: {response[:300]}")
-    try:
-        data = _json.loads(match.group(0))
-    except _json.JSONDecodeError as e:
-        raise HTTPException(502, f"LLM JSON parse failed: {e}")
-    if not isinstance(data, list):
-        raise HTTPException(502, "LLM did not return a list")
-    return data
+  #  cleaned = re.sub(r"^```(?:json)?\s*", "", cleaned)
+    #cleaned = re.sub(r"\s*```$", "", cleaned)
+  #  match = re.search(r"\[[\s\S]*\]", cleaned)
+ #   if not match:
+  #      raise HTTPException(502, f"LLM response was not a JSON array: {response[:300]}")
+#    try:
+   #     data = _json.loads(match.group(0))
+#    except _json.JSONDecodeError as e:
+#        raise HTTPException(502, f"LLM JSON parse failed: {e}")
+#    if not isinstance(data, list):
+  #      raise HTTPException(502, "LLM did not return a list")
+ #   return data
+
 
 
 def _normalize_mcq(q: dict) -> dict:
