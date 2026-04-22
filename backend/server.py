@@ -14,7 +14,7 @@ from pydantic import BaseModel
 from typing import List, Optional, Dict, Literal
 from datetime import datetime, timezone
 
-#from emergentintegrations.llm.chat import LlmChat, UserMessage, ImageContent
+from emergentintegrations.llm.chat import LlmChat, UserMessage, ImageContent
 
 from questions import QUESTIONS, SUBJECTS, MOCK_TEST
 
